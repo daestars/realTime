@@ -42,7 +42,7 @@
         <div class="fruta" id="fruta"></div>
         </div>
     <div id="bloqueConectar">
-        <input id="server" value="127.0.0.1">
+        <input id="server" value="https://realtime-bcxi.onrender.com">
         <button id="conectar">Conectar</button>
     </div>
 
@@ -61,7 +61,7 @@
     var miID = -1;
     document.getElementById("conectar").addEventListener("click",()=>{
         var direccion = document.getElementById("server").value;
-        miConexion = new WebSocket("ws://"+direccion+":8080");
+        miConexion = new WebSocket("wss://"+direccion+":8080");
 
         //miConexion.addEventListener("open", ()=>{alert("me he conectado")});
         miConexion.addEventListener("message", (m)=>{
