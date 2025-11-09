@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realtime</title>
+
+    <style>
+        #juego {
+            border:2px solid black;
+            width:500px;
+            height:500px;
+            position:relative;
+        }
+        .jugador{
+            width:20px;
+            height:20px;
+            background-color:pink;
+            position:absolute;
+            left:0px;
+            top:0px;
+        }
+        .fruta{
+            width:15px;
+            height:15px;
+            background-color:green;
+            position:absolute;
+            left:0px;
+            top:0px;
+            
+        }        
+
+    </style>
+
+
+</head>
+<body>
+
+
+    <div id="juego">
+        <div class="jugador" id="plantilla"></div>
+        <div class="fruta" id="fruta"></div>
+        </div>
+    <div id="bloqueConectar">
+        <input id="server" value="127.0.0.1">
+        <button id="conectar">Conectar</button>
+    </div>
+
+
+
+
+</body>
+<script>
+
+    //guardar jugador plantilla (bp), y quitarlo de escena
+    var jugadorBluePrint = document.getElementById("plantilla");
+    jugadorBluePrint.remove();
+
+    //conectar al server
+    var miConexion;
+    var miID = -1;
+    document.getElementById("conectar").addEventListener("click",()=>{
+        var direccion = document.getElementById("server").value;
+        miConexion = new WebSocket("ws://"+direccion+":8080");
+
+        //miConexion.addEventListener("open", ()=>{alert("me he conectado")});
+        miConexion.addEventListener("message", (m)=>{
+            //alert(m.data.toString());
+            mensaje=JSON.parse(m.data.toString())
+            if (mensaje.tipo=="new"){
+                //crear a alguien en escena
+
+                if (miID==-1) miID=mensaje.datos.id;
+
+                nuevoJugador=jugadorBluePrint.cloneNode();
+                nuevoJugador.id=mensaje.datos.id;
+
+
+                nuevoJugador.dataset.dir=mensaje.datos.dir;
+                nuevoJugador.dataset.posx=mensaje.datos.posx;
+                nuevoJugador.dataset.posy=mensaje.datos.posy;
+                nuevoJugador.style.top=mensaje.datos.posy+"px";
+                nuevoJugador.style.left=mensaje.datos.posx+"px";
+                document.getElementById("juego").appendChild(nuevoJugador);
+
+            } else if (mensaje.tipo=="delete"){
+                //eliminar a alguien de escena
+                document.getElementById(mensaje.datos).remove();
+            } else if (mensaje.tipo=="mover"){
+                jugadorAMover=document.getElementById(mensaje.datos.id);
+
+                jugadorAMover.dataset.dir=mensaje.datos.dir;
+                jugadorAMover.dataset.posx=mensaje.datos.posx;
+                jugadorAMover.dataset.posy=mensaje.datos.posy;
+
+                //mensaje.tipo son todos los paquetes de mensajes que se van mandando
+
+            }
+
+             else if (mensaje.tipo == "fruta") {
+                var fruta = document.getElementById("fruta");
+                fruta.style.left = mensaje.datos.posx + "px";
+                fruta.style.top = mensaje.datos.posy + "px";
+
+        } 
+
+        else if (mensaje.tipo == "puntos") {
+                var jugador = document.getElementById(mensaje.datos.id);
+                
+
+                    jugador.dataset.puntos = mensaje.datos.puntos;
+                    jugador.textContent = mensaje.datos.puntos;
+                
+            
+            }
+        })
+    })
+
+    document.addEventListener("keydown", 
+        (ev)=>{
+            var yo = document.getElementById(miID);
+            mensaje={
+                tipo:"mover",
+                datos:{
+                    id: miID,
+                    posx: yo.dataset.posx,
+                    posy: yo.dataset.posy,
+                    dir: ev.key
+            }
+        }
+            miConexion.send(
+                JSON.stringify(mensaje)
+            );
+        })
+
+
+
+    document.addEventListener("keyup", 
+        (ev)=>{
+            var yo = document.getElementById(miID);
+
+            mensaje={
+                tipo:"mover",
+        datos:{
+                id : miID,
+                posx: yo.dataset.posx,
+                posy: yo.dataset.posy,
+                dir: "0"
+            }
+            }
+
+            miConexion.send(
+                JSON.stringify(mensaje)
+            );
+        })
+
+
+//animar automaticamente la posicion de los juagdores
+        setInterval(()=>{
+            //buscar todos los jugadores (div hijos de la clase "jugador")
+
+ 
+            var listaJugadores = document.getElementsByClassName("jugador");
+            if (listaJugadores.length<1) return;
+            
+            //para cada uno...
+            for (var i=0;i<listaJugadores.length; i++){
+                j=listaJugadores[i];
+
+                
+                var direccion = j.dataset.dir;
+
+                if(direccion=="a"){
+                j.dataset.posx= Number(j.dataset.posx)-20;
+            }else if(direccion=="d"){
+                j.dataset.posx= Number(j.dataset.posx)+20;
+            }else if(direccion=="w"){
+                j.dataset.posy=Number(j.dataset.posy)-20;
+            }else if(direccion=="s"){
+                j.dataset.posy=Number(j.dataset.posy)+20;
+            }
+
+
+            if (j.dataset.posx<0){j.dataset.posx=0}
+            if (j.dataset.posx>500-20){j.dataset.posx=500-20}
+            if (j.dataset.posy<0){j.dataset.posy=0}
+            if (j.dataset.posy>500-20){j.dataset.posy=500-20}
+
+
+            //var jugador=document.getElementById(id);
+            j.style.top=j.dataset.posy+"px";
+            j.style.left=j.dataset.posx+"px";
+            }
+                //leer su valor data.set.dir
+                //cambiar su posicion en esa direccion
+        },50)
+
+
+
+
+
+/*
+    document.addEventListener("keydown", 
+        (ev)=>{
+            if(ev.key=="a"){
+                posx-=20;
+            }else if(ev.key=="d"){
+                posx+=20;
+            }else if(ev.key=="w"){
+                posy-=20;
+            }else if(ev.key=="s"){
+                posy+=20;
+            }
+
+            if (posx<0){posx=0}
+            if (posx>500-20){posx=500-20}
+            if (posy<0){posy=0}
+            if (posy>500-20){posy=500-20}
+
+            var jugador=document.getElementById(id);
+            jugador.style.top=posy+"px";
+            jugador.style.left=posx+"px";
+        }
+    )
+*/
+</script>
+</html>
